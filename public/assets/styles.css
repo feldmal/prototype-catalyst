@@ -111,3 +111,7 @@
 .example-more article{min-height:160px}
 @media(max-width:850px){.pipeline-steps{grid-template-columns:1fr 1fr}.pipeline-steps>i{display:none}.bi-top{display:block}.bi-filters{margin-top:14px}.bi-kpis{grid-template-columns:repeat(2,1fr)}.bi-main-grid{grid-template-columns:1fr}.bi-revenue{grid-column:auto}}
 @media(max-width:600px){.pipeline-steps{grid-template-columns:1fr}.pipeline-output{padding:13px}.pipeline-kpis{grid-template-columns:1fr}.pipeline-output-foot,.bi-foot{flex-direction:column}.bi-dashboard{padding:9px}.bi-kpis{gap:7px}.bi-kpis>div{padding:10px}.bi-kpis b{font-size:1.15rem}.bi-donut-wrap{gap:10px}.bi-donut{width:110px;height:110px}.bi-donut>div{width:70px;height:70px}.bi-donut-legend{min-width:110px}}
+
+/* Quote form bot-trap field */
+.honeypot{position:absolute!important;left:-10000px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important}
+.form button:disabled{opacity:.65;cursor:wait}
