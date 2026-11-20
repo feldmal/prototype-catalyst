@@ -1,13 +1,17 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Tell Prototype Catalyst about your automation or analytics project and request a custom quote."><meta name="theme-color" content="#101d32">
+<meta name="description" content="Describe your data automation or analytics project and request a scoped project discussion."><meta name="theme-color" content="#101d32">
+<meta name="robots" content="index,follow">
+<link rel="canonical" href="https://prototype-catalyst-site.feldmal.workers.dev/quote.html">
+<meta property="og:type" content="website"><meta property="og:site_name" content="Prototype Catalyst"><meta property="og:title" content="Request a quote | Prototype Catalyst"><meta property="og:description" content="Describe your data automation or analytics project and request a scoped project discussion."><meta property="og:url" content="https://prototype-catalyst-site.feldmal.workers.dev/quote.html">
 <title>Request a quote | Prototype Catalyst</title><link rel="stylesheet" href="/assets/styles.css"></head>
 <body>
+<a class="skip-link" href="#main-content">Skip to content</a>
 <header class="topbar">
   <div class="wrap nav">
     <a class="brand" href="/"><span class="mark">PC</span><span>Prototype <b>Catalyst</b></span></a>
-    <button class="menu" aria-label="Toggle menu" aria-expanded="false">☰</button>
-    <nav class="links" aria-label="Main navigation">
+    <button class="menu" aria-label="Toggle menu" aria-controls="primary-navigation" aria-expanded="false">☰</button>
+    <nav class="links" id="primary-navigation" aria-label="Main navigation">
       <a class="" href="/">Home</a>
       <a class="" href="/automation.html">Automation</a>
       <a class="" href="/analytics.html">Analytics</a>
@@ -16,7 +20,7 @@
     </nav>
     <div class="navactions"><a class="login" href="/portal.html">Client workspace</a><a class="btn btn-small" href="/quote.html">Request a quote <span>↗</span></a></div>
   </div>
-</header><main>
+</header><main id="main-content">
 <section class="pagehero"><div class="wrap"><span class="eyebrow">LET'S TALK ABOUT YOUR PROJECT</span><h1>Tell us what you<br>want to improve.</h1><p>Tell us what is taking too much time, what information is difficult to use, or what you want your team to understand. We'll use that context to discuss a suitable approach, project scope, and pricing.</p></div></section>
 <section class="section"><div class="wrap formsplit"><aside class="featurebox"><h3>What happens next?</h3><div><b>1. Understand the problem</b><p>We'll review your current process, the data involved, and the outcome you're looking for.</p></div><div><b>2. Define an approach</b><p>We'll discuss requirements, possible solutions, and the work involved.</p></div><div><b>3. Review a proposal</b><p>You'll receive a project estimate and, where relevant, options for ongoing hosting or support.</p></div><p class="fine">Projects are scoped individually. Pricing depends on complexity, data sources, delivery requirements, and any ongoing service needs.</p></aside>
 <form class="form" id="quote-form">
@@ -29,8 +33,8 @@
 <label>Desired timeline<select name="timeline"><option value="">Not sure</option><option>As soon as possible</option><option>Within 1 month</option><option>1–3 months</option><option>Flexible</option></select></label>
 <label class="full">Tell us about the problem or opportunity<textarea name="details" rows="6" required placeholder="What process would you like to improve? What files or systems are involved? What would a successful result look like?"></textarea></label>
 </div>
-<p class="notice">Your inquiry will be sent securely to our project team. Please do not include passwords or other sensitive information.</p><label class="honeypot" aria-hidden="true">Leave this field empty<input name="website" tabindex="-1" autocomplete="off"></label>
-<button class="btn" type="submit">Review project inquiry →</button><p class="formstatus" aria-live="polite"></p>
+<p class="notice">Your inquiry is sent to our project inbox by email. Please do not upload files or include passwords, customer records, financial account details, or other confidential information. See our <a href="/privacy.html"><u>Privacy Notice</u></a> for details.</p><label class="honeypot" aria-hidden="true">Leave this field empty<input name="website" tabindex="-1" autocomplete="off"></label>
+<button class="btn" type="submit">Send project inquiry →</button><p class="formstatus" role="status" aria-live="polite" aria-atomic="true"></p>
 </form></div></section></main>
 <footer class="footer">
   <div class="wrap footergrid">
@@ -38,7 +42,7 @@
       <p>Practical data automation and analytics for businesses that want to spend less time managing spreadsheets and more time using their information.</p>
     </div>
     <div><h3>Services</h3><a href="/automation.html">Data automation</a><a href="/analytics.html">Data visualization</a><a href="/examples.html">Examples</a></div>
-    <div><h3>Company</h3><a href="/about.html">About</a><a href="/quote.html">Request a quote</a><a href="/portal.html">Client workspace</a></div>
+    <div><h3>Company</h3><a href="/about.html">About</a><a href="/quote.html">Request a quote</a><a href="/portal.html">Client workspace</a><a href="/privacy.html">Privacy</a><a href="/terms.html">Terms</a></div>
   </div>
-  <div class="wrap footbottom"><span>© 2026 Prototype Catalyst · Working business name</span><span>Built around your data. Designed for your workflow.</span></div>
+  <div class="wrap footbottom"><span>© 2026 Prototype Catalyst · Working business name, not yet a registered legal entity</span><span>Built around your data. Designed for your workflow.</span></div>
 </footer><script src="/assets/site.js" defer></script></body></html>
