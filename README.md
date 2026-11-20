@@ -1,6 +1,6 @@
-# Prototype Catalyst — Website starter
+# Prototype Catalyst — Website
 
-A responsive static marketing website for a data automation and analytics consultancy.
+Responsive static marketing website for a data automation and analytics consultancy. Prototype Catalyst is currently a working business name; the business entity has not yet been registered.
 
 ## Pages
 - `public/index.html` — homepage
@@ -8,36 +8,47 @@ A responsive static marketing website for a data automation and analytics consul
 - `public/analytics.html` — data visualization and managed analytics
 - `public/examples.html` — illustrative demonstrations using fictional data
 - `public/about.html` — company approach
-- `public/quote.html` — request-a-quote form prototype
-- `public/portal.html` — client portal placeholder (not a functional login)
+- `public/quote.html` — project inquiry form
+- `public/privacy.html` — current website privacy notice
+- `public/terms.html` — draft website terms
+- `public/portal.html` — client workspace preview only; not a functional login
 - `public/404.html` — not-found page
+- `public/sitemap.xml` and `public/robots.txt` — search engine discovery
 
 ## Local preview
 From the repository root, run `python -m http.server 8000 --directory public` and open http://localhost:8000.
 
 ## Cloudflare deployment
-The repository includes `wrangler.jsonc` configured to serve static assets from `./public` using Workers Static Assets.
-
-In Cloudflare, create a Worker connected to this GitHub repository and the `main` branch. Use the repository root as the project root, leave the build command blank, and set the deploy command to `npx wrangler deploy` (or use Cloudflare's default Wrangler deploy command).
-
-## Before public launch
-1. Replace the working company name if needed.
-2. Configure the quote form Worker secrets: RESEND_API_KEY, QUOTE_TO_EMAIL, and QUOTE_FROM_EMAIL. The endpoint validates submissions and sends inquiries through Resend. Keep secrets out of GitHub.
-3. Add real contact details and reviewed privacy/terms pages.
-4. Review service copy and sample figures. Demonstrations use fictional data.
-5. The client portal is a placeholder. It is not an operational login.
+The repository includes `wrangler.jsonc` configured to serve static assets from `./public` using Workers Static Assets. The Worker handles `POST /api/quote`.
 
 ## Quote form configuration
-
-The quote form posts to `/api/quote`, handled by `src/index.js`. Configure these Worker secrets in Cloudflare:
+Configure these Worker variables in Cloudflare:
 - `RESEND_API_KEY` — Resend API key (secret)
 - `QUOTE_TO_EMAIL` — inbox receiving project inquiries
-- `QUOTE_FROM_EMAIL` — verified sender address/domain in Resend
+- `QUOTE_FROM_EMAIL` — sender address authorized by Resend
 
-The recipient can be changed by updating `QUOTE_TO_EMAIL` in Worker settings; no form code changes are needed. Verify a sending domain in Resend before public launch. Do not commit API keys or secrets to GitHub.
+Keep secrets out of GitHub. The recipient can be changed in Worker settings without changing form code.
+
+The endpoint validates same-origin requests, JSON content type, payload size, required fields, email format, and allowed service selections. It includes a honeypot field and generic provider/network error handling. These are baseline protections, not a substitute for Cloudflare Turnstile and rate limiting before broad public promotion.
+
+## Privacy and customer data
+The current quote form collects contact and project inquiry details only; it does not accept file uploads. Submissions are delivered by email using Resend. Do not invite customers to send confidential datasets, credentials, regulated personal information, or other sensitive records through the public form.
+
+The privacy notice describes the current website only. Before accepting customer data or offering managed hosting, add and review a customer data processing agreement, retention/deletion policy, security controls, and separate service terms.
+
+## Search and accessibility
+Marketing pages include canonical URLs and social metadata. `sitemap.xml` lists indexable marketing pages; the portal preview is excluded from indexing. Shared navigation includes keyboard focus support and a skip link.
 
 ## Planned application architecture
-The next stage is a Python API and background processing workers, business-scoped accounts, private object storage, customer-specific datasets, usage metering, and dashboard integration. Enforce tenant authorization on the server and in the data layer. Do not commit customer data, credentials, API keys, or secrets to this repository.
+The next stage may include a Python API and background processing workers, business-scoped accounts, private object storage, customer-specific datasets, usage metering, and dashboard integration. Enforce tenant authorization on the server and in the data layer. Do not commit customer data, credentials, API keys, or secrets to this repository.
+
+## Launch checklist
+1. Confirm the business name and legal status before representing the business as an LLC.
+2. Replace the temporary Workers URL with the final custom domain; update canonical URLs, Open Graph URLs, sitemap, and robots file.
+3. Review privacy notice and website terms with a qualified professional.
+4. Configure Cloudflare Turnstile and server-side verification, plus appropriate rate limiting, before broad public promotion.
+5. Verify a production sending domain in Resend and update `QUOTE_FROM_EMAIL`.
+6. Keep the client workspace clearly labeled as a preview until authentication, private storage, tenant isolation, and file-processing security are implemented and tested.
 
 ## Status
-Early development — marketing frontend only.
+Marketing website and email inquiry endpoint. Customer portal, customer file uploads, and managed data hosting are not operational.
