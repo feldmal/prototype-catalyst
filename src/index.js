@@ -4,7 +4,7 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
 });
 
 const clean = (value, max = 2000) =>
-  String(value ?? "").replace(/[\\u0000-\\u001f\\u007f]/g, " ").replace(/\\s+/g, " ").trim().slice(0, max);
+  String(value ?? "").replace(/[\x00-\x1F\x7F]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 
 const withSecurityHeaders = response => {
   const headers = new Headers(response.headers);
@@ -50,7 +50,7 @@ export default {
       const details = clean(body.details, 5000);
 
       if (!name || !email || !service || !details) return json({ error: "Please complete the required fields." }, 400);
-      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length > 254) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
         return json({ error: "Please enter a valid email address." }, 400);
       }
       const allowedServices = ["Data automation", "Data visualization and analytics", "Both services", "Not sure yet"];
@@ -68,7 +68,7 @@ export default {
         `Budget: ${budget || "Not provided"}`,
         `Timeline: ${timeline || "Not provided"}`, "",
         "Project details:", details
-      ].join("\\n");
+      ].join("\n");
 
       try {
         const sent = await fetch("https://api.resend.com/emails", {
