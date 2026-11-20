@@ -115,3 +115,17 @@
 /* Quote form bot-trap field */
 .honeypot{position:absolute!important;left:-10000px!important;top:auto!important;width:1px!important;height:1px!important;overflow:hidden!important}
 .form button:disabled{opacity:.65;cursor:wait}
+
+
+/* Pre-launch accessibility, legal pages, and form clarity */
+.skip-link{position:absolute;left:12px;top:-60px;z-index:100;background:#fff;color:#10223c;padding:10px 14px;border:2px solid var(--blue);border-radius:8px;font-weight:750}
+.skip-link:focus{top:12px}
+:focus-visible{outline:3px solid #2f80ed;outline-offset:3px}
+.links a:focus-visible,.btn:focus-visible,.login:focus-visible{border-radius:5px}
+.legal-content{max-width:820px}
+.legal-content h2{font-size:1.35rem;letter-spacing:-.025em;margin:34px 0 8px}
+.legal-content p{color:#526176}
+.legal-content a{color:#246bc4;text-decoration:underline;text-underline-offset:3px}
+.formstatus{min-height:1.5em;margin:12px 0 0}
+.notice a{color:#245fa9}
+@media(max-width:680px){.navactions .btn{white-space:nowrap}.pipeline-output-head{align-items:flex-start}.pipeline-output-head b{font-size:.9rem}}
