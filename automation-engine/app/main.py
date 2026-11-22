@@ -8,7 +8,7 @@ from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadF
 from fastapi.responses import FileResponse
 
 from app import storage
-from app.workflows.registry import get_workflow
+from app.workflows.registry import WORKFLOWS, get_workflow
 
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_MB", "25")) * 1024 * 1024
 ALLOWED_SUFFIXES = {".csv", ".xlsx"}
@@ -16,7 +16,7 @@ MAX_FILES_PER_JOB = 10
 
 app = FastAPI(
     title="Prototype Catalyst Automation Engine",
-    version="0.2.0",
+    version="0.3.0",
     description="Local development API for file-based automation workflows.",
 )
 
@@ -38,15 +38,19 @@ def _input_paths(job: dict) -> list[Path]:
             return [Path(value) for value in values]
     except (json.JSONDecodeError, TypeError):
         pass
-    # Backward compatibility for jobs created before multi-file support.
     return [Path(stored)]
 
 
 def public_job(job: dict) -> dict:
+    try:
+        options = json.loads(job.get("workflow_options") or "{}")
+    except (json.JSONDecodeError, TypeError):
+        options = {}
     return {
         "id": job["id"],
         "workflow": job["workflow"],
         "filename": job["original_filename"],
+        "options": options,
         "status": job["status"],
         "error": job["error"],
         "created_at": job["created_at"],
@@ -70,13 +74,14 @@ def process_job(job_id: str) -> None:
         if not input_paths:
             raise ValueError("No input files were stored.")
 
+        options = json.loads(job.get("workflow_options") or "{}")
         if job["workflow"] == "combine_files":
             output_suffix = ".csv" if all(path.suffix.lower() == ".csv" for path in input_paths) else ".xlsx"
         else:
             output_suffix = input_paths[0].suffix.lower()
 
         output_path = storage.OUTPUT_DIR / f"{job_id}{output_suffix}"
-        workflow.run(input_paths, output_path)
+        workflow.run(input_paths, output_path, options=options)
         storage.update_job(
             job_id,
             output_path=str(output_path),
@@ -108,25 +113,24 @@ def list_workflows() -> dict:
                 "min_files": workflow.min_files,
                 "max_files": workflow.max_files,
             }
-            for workflow in get_registered_workflows()
+            for workflow in WORKFLOWS.values()
         ]
     }
-
-
-def get_registered_workflows():
-    from app.workflows.registry import WORKFLOWS
-    return WORKFLOWS.values()
 
 
 @app.post("/jobs", status_code=202)
 async def submit_job(
     background_tasks: BackgroundTasks,
     workflow: str = Form("clean_table"),
+    cleanup: bool = Form(False),
     files: list[UploadFile] = File(...),
 ) -> dict:
     selected_workflow = get_workflow(workflow)
     if selected_workflow is None:
         raise HTTPException(status_code=400, detail="Unknown workflow. See GET /workflows.")
+
+    if cleanup and workflow != "combine_files":
+        raise HTTPException(status_code=400, detail="The cleanup option is only available for combine_files.")
 
     if not selected_workflow.min_files <= len(files) <= selected_workflow.max_files:
         raise HTTPException(
@@ -166,8 +170,6 @@ async def submit_job(
             saved_paths.append(input_path)
             safe_names.append(safe_name)
     except Exception:
-        for path in saved_paths:
-            path.unlink(missing_ok=True)
         for path in storage.UPLOAD_DIR.glob(f"{job_id}_*"):
             path.unlink(missing_ok=True)
         raise
@@ -187,6 +189,7 @@ async def submit_job(
         "error": None,
         "created_at": now,
         "updated_at": now,
+        "workflow_options": json.dumps({"cleanup": cleanup} if workflow == "combine_files" else {}),
     })
     background_tasks.add_task(process_job, job_id)
     return {"job": public_job(storage.get_job(job_id))}
