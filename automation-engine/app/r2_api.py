@@ -114,7 +114,11 @@ def complete_upload(session_id: str, payload: CompleteRequest, background_tasks:
     if len(payload.parts) != int(session["part_count"]):
         raise HTTPException(status_code=400, detail="Every expected part must be supplied.")
     try:
-        r2().complete_multipart(_session_upload(session), payload.parts)
+        client = r2()
+        client.complete_multipart(_session_upload(session), payload.parts)
+        actual_size = int(client.head_object(session["object_key"]).get("ContentLength", -1))
+        if actual_size != int(session["expected_size"]):
+            raise ValueError("Uploaded object size does not match the declared file size.")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     stamp, job_id = now(), str(uuid.uuid4())
