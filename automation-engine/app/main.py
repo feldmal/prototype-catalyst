@@ -51,6 +51,14 @@ def public_job(job: dict) -> dict:
     }
 
 
+def process_job_from_paths(job: dict, input_paths: list[Path], output_path: Path) -> dict:
+    workflow = get_workflow(job["workflow"])
+    if workflow is None:
+        raise ValueError("Unknown workflow.")
+    options = json.loads(job.get("workflow_options") or "{}")
+    return workflow.run(input_paths, output_path, options=options)
+
+
 def process_job(job_id: str) -> None:
     job = storage.get_job(job_id)
     if not job: return
@@ -60,7 +68,6 @@ def process_job(job_id: str) -> None:
         if workflow is None: raise ValueError("Unknown workflow.")
         input_paths = _input_paths(job)
         if not input_paths: raise ValueError("No input files were stored.")
-        options = json.loads(job.get("workflow_options") or "{}")
         if workflow.output_format == "xlsx":
             suffix = ".xlsx"
         elif job["workflow"] == "combine_files":
@@ -68,13 +75,17 @@ def process_job(job_id: str) -> None:
         else:
             suffix = input_paths[0].suffix.lower()
         output_path = storage.OUTPUT_DIR / f"{job_id}{suffix}"
-        metrics = workflow.run(input_paths, output_path, options=options)
+        metrics = process_job_from_paths(job, input_paths, output_path)
         storage.update_job(job_id, output_path=str(output_path), status="completed",
                            error=None, result_metrics=json.dumps(metrics), updated_at=utc_now())
     except Exception:
         storage.update_job(job_id, status="failed",
                            error="The files could not be processed. Check the workflow options, file formats, headers, and contents, then try again.",
                            updated_at=utc_now())
+
+
+from app.r2_api import router as r2_upload_router
+app.include_router(r2_upload_router)
 
 
 @app.get("/health")
