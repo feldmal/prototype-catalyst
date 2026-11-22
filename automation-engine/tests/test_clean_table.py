@@ -71,8 +71,9 @@ def test_combine_csv_files_appends_rows_and_unions_columns(tmp_path: Path):
     result = pd.read_csv(output)
 
     assert result["Customer"].tolist() == ["Acme", "Northwind"]
-    assert result["Amount"].tolist() == [100.0, float("nan")] or pd.isna(result.loc[1, "Amount"])
-    assert result["Region"].tolist()[0] != result["Region"].tolist()[0]  # first row is missing
+    assert result.loc[0, "Amount"] == 100
+    assert pd.isna(result.loc[1, "Amount"])
+    assert pd.isna(result.loc[0, "Region"])
     assert result.loc[1, "Region"] == "West"
     assert metrics == {
         "input_files": 2,
