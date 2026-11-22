@@ -1,8 +1,9 @@
-# Prototype Catalyst — Website
+# Prototype Catalyst
 
-Responsive static marketing website for a data automation and analytics consultancy. Prototype Catalyst is currently a working business name; the business entity has not yet been registered.
+Responsive static marketing website and early development workspace for a data automation and analytics consultancy. Prototype Catalyst is currently a working business name; the business entity has not yet been registered.
 
-## Pages
+## Website
+
 - `public/index.html` — homepage
 - `public/automation.html` — spreadsheet/file automation services
 - `public/analytics.html` — data visualization and managed analytics
@@ -15,40 +16,63 @@ Responsive static marketing website for a data automation and analytics consulta
 - `public/404.html` — not-found page
 - `public/sitemap.xml` and `public/robots.txt` — search engine discovery
 
-## Local preview
-From the repository root, run `python -m http.server 8000 --directory public` and open http://localhost:8000.
+Local preview: `python -m http.server 8000 --directory public`.
 
-## Cloudflare deployment
-The repository includes `wrangler.jsonc` configured to serve static assets from `./public` using Workers Static Assets. The Worker handles `POST /api/quote`.
+## Website deployment and quote form
 
-## Quote form configuration
+The marketing site is deployed through Cloudflare Workers Static Assets. The Worker handles `POST /api/quote`.
+
 Configure these Worker variables in Cloudflare:
 - `RESEND_API_KEY` — Resend API key (secret)
 - `QUOTE_TO_EMAIL` — inbox receiving project inquiries
 - `QUOTE_FROM_EMAIL` — sender address authorized by Resend
 
-Keep secrets out of GitHub. The recipient can be changed in Worker settings without changing form code.
+Keep secrets out of GitHub. The quote endpoint validates same-origin requests, JSON content type, payload size, required fields, email format, and allowed service selections. It includes a honeypot and a Cloudflare Workers rate-limit binding (3 submissions per minute per client IP). Turnstile server-side verification must be integrated and tested before relying on it as an active protection.
 
-The endpoint validates same-origin requests, JSON content type, payload size, required fields, email format, and allowed service selections. It includes a honeypot field and generic provider/network error handling. These are baseline protections, not a substitute for Cloudflare Turnstile and rate limiting before broad public promotion.
+The current quote form collects contact and project inquiry details only; it does not accept customer files. Submissions are delivered by email using Resend. Do not invite customers to send confidential datasets, credentials, regulated personal information, or other sensitive records through the public form.
 
-## Privacy and customer data
-The current quote form collects contact and project inquiry details only; it does not accept file uploads. Submissions are delivered by email using Resend. Do not invite customers to send confidential datasets, credentials, regulated personal information, or other sensitive records through the public form.
+## Automation engine (development prototype)
 
-The privacy notice describes the current website only. Before accepting customer data or offering managed hosting, add and review a customer data processing agreement, retention/deletion policy, security controls, and separate service terms.
+The reusable Python automation engine is in `automation-engine/`. It currently provides:
+- CSV/XLSX upload with a 25 MB limit
+- A tracked job lifecycle (queued, processing, completed, failed)
+- A sample `clean_table` workflow using Pandas
+- Job status and output download endpoints
+- Docker Compose local development
 
-## Search and accessibility
-Marketing pages include canonical URLs and social metadata. `sitemap.xml` lists indexable marketing pages; the portal preview is excluded from indexing. Shared navigation includes keyboard focus support and a skip link.
+Run it with Docker Desktop:
 
-## Planned application architecture
-The next stage may include a Python API and background processing workers, business-scoped accounts, private object storage, customer-specific datasets, usage metering, and dashboard integration. Enforce tenant authorization on the server and in the data layer. Do not commit customer data, credentials, API keys, or secrets to this repository.
+```bash
+cd automation-engine
+docker compose up --build
+```
 
-## Launch checklist
-1. Confirm the business name and legal status before representing the business as an LLC.
-2. Replace the temporary Workers URL with the final custom domain; update canonical URLs, Open Graph URLs, sitemap, and robots file.
-3. Review privacy notice and website terms with a qualified professional.
-4. Configure Cloudflare Turnstile and server-side verification, plus appropriate rate limiting, before broad public promotion.
-5. Verify a production sending domain in Resend and update `QUOTE_FROM_EMAIL`.
-6. Keep the client workspace clearly labeled as a preview until authentication, private storage, tenant isolation, and file-processing security are implemented and tested.
+Then open http://127.0.0.1:8000/docs.
+
+**Important:** this engine is a local development prototype only. It has no customer authentication, tenant isolation, malware scanning, durable distributed queue, production object storage, or production deployment. Its API is bound to localhost in Docker Compose. Do not expose it publicly or process real customer/confidential data.
+
+## Planned hybrid architecture
+
+- Cloudflare: marketing site, DNS, edge protections, and customer-facing entry point.
+- Python API and workers: file validation and customer-specific processing workflows.
+- PostgreSQL: application metadata, customers, jobs, and usage records.
+- Private object storage: source uploads and generated outputs.
+- Metabase: hosted analytics and reporting, isolated by customer.
+
+The platform should be modular: client-specific transformations become separate tested workflow modules rather than one-off changes to the API.
+
+## Production readiness work remaining
+
+1. Add authentication and enforce business/tenant ownership in every API and data access path.
+2. Move job metadata to PostgreSQL and files to private object storage.
+3. Replace in-process background tasks with a durable queue and separate worker process.
+4. Add malware scanning, retention/deletion controls, audit events, quotas, and monitoring.
+5. Add customer-specific workflow configuration and isolated execution.
+6. Add and test Turnstile server-side verification on the quote endpoint.
+7. Review customer data processing terms, retention policy, security controls, and separate service terms before accepting customer data.
+8. Replace the temporary Workers URL with the final custom domain and update canonical URLs, social metadata, sitemap, and robots file.
+9. Verify production sending domain configuration in Resend.
 
 ## Status
-Marketing website and email inquiry endpoint. Customer portal, customer file uploads, and managed data hosting are not operational.
+
+Marketing website and email inquiry endpoint are operational components. The automation engine is a local development prototype. Customer portal, customer file uploads, and managed data hosting are not yet operational.
