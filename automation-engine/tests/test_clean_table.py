@@ -1,31 +1,61 @@
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from app.workflows.clean_table import run
 
 
-def test_clean_table_normalizes_headers_and_trims_values(tmp_path: Path):
-    source = tmp_path / "source.csv"
-    output = tmp_path / "output.csv"
-    source.write_text(" Customer Name , Order Date , Amount \n Alice ,2026-01-01,10\n,,\n", encoding="utf-8")
+@pytest.mark.parametrize("suffix", [".csv", ".xlsx"])
+def test_clean_table_removes_empty_and_whitespace_only_rows_and_columns(
+    tmp_path: Path, suffix: str
+):
+    source = tmp_path / f"source{suffix}"
+    output = tmp_path / f"output{suffix}"
+
+    frame = pd.DataFrame(
+        {
+            " Customer Name ": [" Alice ", "   ", None, " Bob "],
+            " Amount ": [10, None, None, 20],
+            " Empty Column ": ["   ", "   ", None, " "],
+        }
+    )
+    if suffix == ".csv":
+        frame.to_csv(source, index=False)
+    else:
+        frame.to_excel(source, index=False, engine="openpyxl")
 
     metrics = run(source, output)
-    result = pd.read_csv(output)
 
-    assert list(result.columns) == ["customer_name", "order_date", "amount"]
-    assert result.loc[0, "customer_name"] == "Alice"
-    assert metrics["input_rows"] == 2
-    assert metrics["output_rows"] == 1
+    if suffix == ".csv":
+        result = pd.read_csv(output)
+    else:
+        result = pd.read_excel(output, engine="openpyxl")
+
+    assert output.is_file()
+    assert list(result.columns) == ["customer_name", "amount"]
+    assert result["customer_name"].tolist() == ["Alice", "Bob"]
+    assert result["amount"].tolist() == [10, 20]
+    assert metrics == {
+        "input_rows": 4,
+        "output_rows": 2,
+        "input_columns": 3,
+        "output_columns": 2,
+    }
 
 
-def test_clean_table_excel_round_trip(tmp_path: Path):
-    source = tmp_path / "source.xlsx"
-    output = tmp_path / "output.xlsx"
-    pd.DataFrame({" Customer Name ": [" Bob "], " Amount ": [12]}).to_excel(source, index=False)
+@pytest.mark.parametrize("suffix", [".csv", ".xlsx"])
+def test_clean_table_preserves_file_format(tmp_path: Path, suffix: str):
+    source = tmp_path / f"source{suffix}"
+    output = tmp_path / f"cleaned{suffix}"
+    frame = pd.DataFrame({" Name ": [" Taylor "], " Total ": [42]})
+
+    if suffix == ".csv":
+        frame.to_csv(source, index=False)
+    else:
+        frame.to_excel(source, index=False, engine="openpyxl")
 
     run(source, output)
-    result = pd.read_excel(output)
 
-    assert list(result.columns) == ["customer_name", "amount"]
-    assert result.loc[0, "customer_name"] == "Bob"
+    assert output.suffix == suffix
+    assert output.is_file()
