@@ -44,6 +44,24 @@ jobs = Table(
 Index("idx_jobs_created", jobs.c.created_at)
 Index("idx_jobs_status", jobs.c.status)
 
+r2_upload_sessions = Table(
+    "r2_upload_sessions",
+    metadata,
+    Column("id", String(36), primary_key=True),
+    Column("object_key", String(700), nullable=False, unique=True),
+    Column("multipart_upload_id", String(300), nullable=False),
+    Column("filename", String(500), nullable=False),
+    Column("content_type", String(120), nullable=False),
+    Column("expected_size", String(30), nullable=False),
+    Column("part_size", String(30), nullable=False),
+    Column("part_count", String(20), nullable=False),
+    Column("workflow", String(100), nullable=False),
+    Column("workflow_options", Text, nullable=False),
+    Column("status", String(30), nullable=False),
+    Column("created_at", String(40), nullable=False),
+    Column("updated_at", String(40), nullable=False),
+)
+
 workflow_configs = Table(
     "workflow_configs",
     metadata,
@@ -170,3 +188,29 @@ def list_workflow_configs() -> list[dict[str, Any]]:
             item["options"] = json.loads(item["options"])
             result.append(item)
         return result
+
+
+
+def create_r2_upload_session(session: dict[str, Any]) -> None:
+    with _connect() as connection:
+        connection.execute(r2_upload_sessions.insert().values(**session))
+
+
+def get_r2_upload_session(session_id: str) -> dict[str, Any] | None:
+    with _connect() as connection:
+        row = connection.execute(
+            select(r2_upload_sessions).where(r2_upload_sessions.c.id == session_id)
+        ).mappings().first()
+        return dict(row) if row else None
+
+
+def update_r2_upload_session(session_id: str, **fields: Any) -> None:
+    allowed = {"status", "updated_at"}
+    if not fields or not set(fields).issubset(allowed):
+        raise ValueError("Unsupported upload-session update.")
+    with _connect() as connection:
+        connection.execute(
+            update(r2_upload_sessions)
+            .where(r2_upload_sessions.c.id == session_id)
+            .values(**fields)
+        )
