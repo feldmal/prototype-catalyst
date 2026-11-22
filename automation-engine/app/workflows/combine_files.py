@@ -46,7 +46,7 @@ def run(
     for input_path in input_paths:
         suffix = input_path.suffix.lower()
         if suffix == ".csv":
-            frame = pd.read_csv(input_path)
+            frame = pd.read_csv(input_path, skip_blank_lines=False)
         elif suffix == ".xlsx":
             frame = pd.read_excel(input_path, engine="openpyxl")
         else:
