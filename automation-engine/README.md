@@ -50,6 +50,16 @@ When status is `completed`, download the output:
 curl -L -o cleaned.csv http://127.0.0.1:8000/jobs/JOB_ID/download
 ```
 
+## Run automated tests
+
+From the `automation-engine` directory, run the regression tests inside the Docker image:
+
+```bash
+docker compose run --rm --build automation-api pytest -q
+```
+
+The tests cover both CSV and XLSX inputs, including whitespace-only rows and columns, fully blank rows, normalized headers, trimmed values, and output format preservation.
+
 ## Built-in workflow: clean_table
 
 The starter workflow:
