@@ -80,7 +80,7 @@ def test_combine_files_through_api_with_cleanup(client):
 
 
 def test_validate_data_through_api(client):
-    source = "id,amount,order_date\n1,10,2026-01-01\n1,bad,not-a-date\n"
+    source = "id,amount,order_date\n1,10,2026-01-01\n1,bad,not-a-date\n1,bad,not-a-date\n"
     job, output = submit_and_download(
         client,
         "validate_data",
