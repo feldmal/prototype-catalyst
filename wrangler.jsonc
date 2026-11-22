@@ -3,6 +3,16 @@
   "name": "prototype-catalyst-site",
   "main": "src/index.js",
   "compatibility_date": "2026-11-15",
+  "ratelimits": [
+    {
+      "name": "QUOTE_RATE_LIMITER",
+      "namespace_id": "734921",
+      "simple": {
+        "limit": 3,
+        "period": 60
+      }
+    }
+  ],
   "assets": {
     "directory": "./public",
     "not_found_handling": "404-page",
