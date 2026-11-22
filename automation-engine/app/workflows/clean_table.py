@@ -23,13 +23,16 @@ def run(input_path: Path, output_path: Path) -> dict[str, int]:
     original_rows, original_columns = frame.shape
     frame.columns = [_clean_column_name(column) for column in frame.columns]
 
-    # Keep only rows/columns that contain at least one non-empty value.
-    frame = frame.dropna(axis=0, how="all").dropna(axis=1, how="all")
-
+    # Trim text first so whitespace-only cells become genuinely empty values.
     for column in frame.select_dtypes(include=["object", "string"]).columns:
         frame[column] = frame[column].map(
             lambda value: value.strip() if isinstance(value, str) else value
         )
+
+    # Treat empty strings and whitespace-only strings as missing before dropping
+    # fully empty rows and columns. This catches rows that contain only spaces.
+    frame = frame.replace(r"^\s*$", pd.NA, regex=True)
+    frame = frame.dropna(axis=0, how="all").dropna(axis=1, how="all")
 
     if suffix == ".csv":
         frame.to_csv(output_path, index=False)
