@@ -5,9 +5,11 @@ A local-first starter for the reusable file-processing service behind Prototype 
 ## Current scope
 
 - Accept CSV and Excel uploads through an API.
-- Validate file type and size (25 MB maximum).
+- Validate file type, file count, and combined upload size (25 MB maximum per job).
 - Create a tracked processing job.
-- Run the built-in `clean_table` workflow.
+- Route work through a small workflow registry.
+- Run `clean_table` on one CSV or XLSX file.
+- Run `combine_files` on 2–10 CSV and/or XLSX files.
 - Make job status and output downloadable.
 - Keep uploads and results on local disk for development.
 
@@ -30,13 +32,32 @@ Health check:
 curl http://127.0.0.1:8000/health
 ```
 
-Submit a file:
+List available workflows:
+
+```bash
+curl http://127.0.0.1:8000/workflows
+```
+
+## Submit a job
+
+The upload field is named `files`. For `clean_table`, upload exactly one file:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/jobs \
   -F "workflow=clean_table" \
-  -F "file=@sample.csv"
+  -F "files=@sample.csv"
 ```
+
+For `combine_files`, upload at least two files (up to ten):
+
+```bash
+curl -X POST http://127.0.0.1:8000/jobs \
+  -F "workflow=combine_files" \
+  -F "files=@january.csv" \
+  -F "files=@february.xlsx"
+```
+
+The consolidation workflow appends rows and aligns columns by header name. If every input is CSV, the result is CSV. If any input is XLSX, the result is XLSX. Columns that are absent from a particular input are blank for those rows. The workflow does not automatically clean or rename headers; it matches the header names as provided.
 
 Check status using the returned job ID:
 
@@ -47,36 +68,35 @@ curl http://127.0.0.1:8000/jobs/JOB_ID
 When status is `completed`, download the output:
 
 ```bash
-curl -L -o cleaned.csv http://127.0.0.1:8000/jobs/JOB_ID/download
+curl -L -o combined.xlsx http://127.0.0.1:8000/jobs/JOB_ID/download
 ```
 
 ## Run automated tests
 
-From the `automation-engine` directory, run the regression tests inside the Docker image:
+From the `automation-engine` directory:
 
 ```bash
 docker compose run --rm --build automation-api pytest -q
 ```
 
-The tests cover both CSV and XLSX inputs, including whitespace-only rows and columns, fully blank rows, normalized headers, trimmed values, and output format preservation.
+The tests cover CSV and XLSX cleanup, empty and whitespace-only rows/columns, output format preservation, CSV consolidation, mixed CSV/XLSX consolidation, minimum file count, and workflow registry entries.
 
-## Built-in workflow: clean_table
+## Available workflows
 
-The starter workflow:
-- Trims whitespace from column names and text cells.
-- Converts column names to lowercase snake_case.
-- Removes completely empty rows and columns.
-- Preserves numeric values and dates where possible.
-- Writes a cleaned CSV or Excel file matching the input type.
+| Workflow | Files | Behavior |
+|---|---:|---|
+| `clean_table` | 1 | Standardizes headers, trims text, and removes empty rows and columns. |
+| `combine_files` | 2–10 | Appends records from multiple files and aligns columns by header name. |
 
-It is intentionally a small, predictable demonstration workflow. Client-specific transformations should be added as separate, tested workflow modules rather than hard-coded into the API.
+New workflows should be implemented as separate modules and registered in `app/workflows/registry.py`. The API uses each registry entry's file-count rules and runner, so adding another workflow does not require hard-coding its processing logic into the job worker.
 
 ## API
 
 | Method | Route | Purpose |
 |---|---|---|
 | GET | `/health` | Service health |
-| POST | `/jobs` | Upload a file and start a workflow |
+| GET | `/workflows` | List registered workflows and file-count requirements |
+| POST | `/jobs` | Upload file(s) and start a workflow |
 | GET | `/jobs/{job_id}` | Read job status and metadata |
 | GET | `/jobs/{job_id}/download` | Download completed output |
 
@@ -84,8 +104,10 @@ It is intentionally a small, predictable demonstration workflow. Client-specific
 
 - `app/main.py`: HTTP API and job lifecycle.
 - `app/storage.py`: local SQLite job metadata and file paths.
-- `app/workflows/clean_table.py`: sample Pandas workflow.
-- `tests/`: workflow and API tests.
+- `app/workflows/registry.py`: workflow definitions and file-count rules.
+- `app/workflows/clean_table.py`: single-file cleanup workflow.
+- `app/workflows/combine_files.py`: multi-file consolidation workflow.
+- `tests/`: workflow regression tests.
 - `data/`: local working files (git-ignored).
 
 ## Next production steps
