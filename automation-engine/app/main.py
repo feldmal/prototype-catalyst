@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 
 from app import storage
 from app.workflows.registry import WORKFLOWS, get_workflow
@@ -202,6 +202,13 @@ def download_result(job_id: str):
     if not job: raise HTTPException(status_code=404, detail="Job not found.")
     if job["status"] != "completed" or not job["output_path"]:
         raise HTTPException(status_code=409, detail="The job has no completed output yet.")
+    if job["output_path"].startswith("r2://"):
+        from app.r2_storage import R2Storage, R2ConfigurationError
+        try:
+            key = job["output_path"][5:]
+            return RedirectResponse(R2Storage().create_download_url(key), status_code=307)
+        except R2ConfigurationError:
+            raise HTTPException(status_code=503, detail="R2 storage is not configured.")
     path = Path(job["output_path"])
     if not path.is_file(): raise HTTPException(status_code=404, detail="The output file is no longer available.")
     prefix = {"combine_files": "combined", "validate_data": "validation_report"}.get(job["workflow"], job["workflow"])
