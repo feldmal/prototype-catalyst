@@ -210,7 +210,7 @@ def test_job_history_filters_and_saved_config(client):
     assert configs.json()["configs"][0]["name"] == "West region sales"
 
 
-def test_download_before_completion_returns_conflict(client):
+def test_download_for_unknown_job_returns_not_found(client):
     response = client.post(
         "/jobs",
         data={"workflow": "clean_table"},
