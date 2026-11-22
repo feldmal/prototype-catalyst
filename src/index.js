@@ -25,6 +25,13 @@ export default {
         return json({ error: "Unsupported request format." }, 415);
       }
 
+      // Apply the per-IP limit to quote submissions before parsing or sending email.
+      const clientIp = request.headers.get("CF-Connecting-IP") || "unknown";
+      const { success: withinLimit } = await env.QUOTE_RATE_LIMITER.limit({ key: clientIp });
+      if (!withinLimit) {
+        return json({ error: "Too many submissions. Please wait a minute before trying again." }, 429);
+      }
+
       const declaredLength = Number(request.headers.get("Content-Length") || 0);
       if (declaredLength > 16000) return json({ error: "Your inquiry is too large. Please shorten the details and try again." }, 413);
 
