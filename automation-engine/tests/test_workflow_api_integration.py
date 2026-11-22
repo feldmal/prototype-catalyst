@@ -56,7 +56,7 @@ def test_clean_table_through_api(client):
     )
 
     result = pd.read_csv(BytesIO(output))
-    assert list(result.columns) == ["customer_name", "amount", "empty_column"] or list(result.columns) == ["customer name", "amount", "empty column"]
+    assert list(result.columns) == ["customer_name", "amount"]
     assert len(result) == 2
     assert result.iloc[0, 0] == "Acme"
     assert job["metrics"]["output_rows"] == 2
