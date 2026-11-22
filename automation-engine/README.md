@@ -49,6 +49,28 @@ docker compose -f compose.yaml -f compose.postgres.yaml down
 
 This initial database step creates the existing jobs and workflow configuration tables in PostgreSQL and preserves the existing SQLite default. It does not yet migrate historical SQLite records into PostgreSQL. Keep your existing Docker volume and SQLite data until a separate, verified data migration is planned.
 
+## Cloudflare R2 storage foundation (initial integration)
+
+The codebase now includes an S3-compatible R2 storage adapter in `app/r2_storage.py`.
+It supports private-bucket multipart initiation, short-lived presigned part URLs,
+multipart completion/abort, and short-lived download URLs. The default configured
+maximum object size is 1,024 MiB (1 GiB), adjustable with `R2_MAX_UPLOAD_MB`.
+Multipart parts default to 16 MiB; the adapter enforces S3/R2's 5 MiB minimum
+(except the final part) and 10,000-part ceiling.
+
+Install/configure nothing to continue using the existing local upload workflow.
+To prepare R2 credentials, copy `.env.example` to a local `.env` file and set
+the R2 account ID, bucket-scoped access key/secret, and private bucket name.
+Never commit `.env` or paste credentials into chat. The adapter is not yet
+wired to public HTTP upload routes or job execution: the existing `POST /jobs`
+still uses local disk and its existing 25 MiB limit. This is intentional until
+authenticated upload-session ownership, durable session metadata, CORS, and
+worker-side processing are implemented. Do not expose presigned-upload endpoints
+or use this foundation for customer data yet.
+
+The R2 adapter's unit tests use a mocked S3 client, so they do not require an
+R2 account or incur storage charges.
+
 ## Workflows
 
 | Workflow | Files | Output | Behavior |
