@@ -79,7 +79,11 @@ def test_api_accepts_cleanup_option_and_downloads_cleaned_output(tmp_path: Path,
             ],
         )
         assert response.status_code == 202
-        job = response.json()["job"]
+        submitted_job = response.json()["job"]
+        assert submitted_job["status"] == "queued"
+        job_response = client.get(f"/jobs/{submitted_job['id']}")
+        assert job_response.status_code == 200
+        job = job_response.json()["job"]
         assert job["status"] == "completed"
         assert job["options"] == {"cleanup": True}
         download = client.get(job["download_url"])
