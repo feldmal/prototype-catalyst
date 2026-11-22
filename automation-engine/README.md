@@ -8,7 +8,7 @@ A local-first starter for the reusable file-processing service behind Prototype 
 - Track jobs and expose status, metrics, and downloadable results.
 - Run five workflows: cleanup, consolidation, validation, transformation, and aggregation.
 - Save reusable workflow configurations for repeat processing.
-- Keep uploads, outputs, and metadata on local disk for development.
+- Keep uploads and outputs on local disk for development.\n- Use SQLite by default, with an optional PostgreSQL backend for local infrastructure testing.
 
 **This is an internal development prototype, not a public customer upload service.** It has no customer authentication, tenant isolation, malware scanning, durable distributed queue, production object storage, or production scheduler. Do not expose it publicly or upload real customer/confidential data.
 
@@ -22,6 +22,32 @@ docker compose up --build
 ```
 
 Open http://127.0.0.1:8000/docs for interactive API documentation.
+
+## Database configuration
+
+The default local setup continues to use SQLite. The storage layer now uses SQLAlchemy and can connect to PostgreSQL through `DATABASE_URL`.
+
+To run the API and PostgreSQL together locally:
+
+```bash
+docker compose -f compose.yaml -f compose.postgres.yaml up --build
+```
+
+The PostgreSQL development database is exposed on localhost port 5433. Its credentials in `compose.postgres.yaml` are for local development only; do not reuse them outside your machine.
+
+To run the test suite against the default isolated SQLite test databases:
+
+```bash
+docker compose run --rm --build automation-api pytest -q
+```
+
+To stop the PostgreSQL development stack:
+
+```bash
+docker compose -f compose.yaml -f compose.postgres.yaml down
+```
+
+This initial database step creates the existing jobs and workflow configuration tables in PostgreSQL and preserves the existing SQLite default. It does not yet migrate historical SQLite records into PostgreSQL. Keep your existing Docker volume and SQLite data until a separate, verified data migration is planned.
 
 ## Workflows
 
@@ -105,7 +131,7 @@ The tests cover cleanup and consolidation, validation reports, transformation ru
 ## Project structure
 
 - `app/main.py`: HTTP API and job lifecycle.
-- `app/storage.py`: SQLite job history and workflow presets.
+- `app/storage.py`: SQLAlchemy-backed job history and workflow presets (SQLite by default; PostgreSQL via `DATABASE_URL`).
 - `app/workflows/registry.py`: workflow definitions and file-count rules.
 - `app/workflows/`: individual workflow implementations.
 - `tests/`: workflow and API regression tests.
