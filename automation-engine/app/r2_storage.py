@@ -138,6 +138,9 @@ class R2Storage:
     def download_file(self, key: str, destination: str) -> None:
         self.client.download_file(self.bucket, key, destination)
 
+    def head_object(self, key: str) -> dict[str, Any]:
+        return self.client.head_object(Bucket=self.bucket, Key=key)
+
     def upload_file(self, source: str, key: str, content_type: str) -> None:
         self.client.upload_file(
             source, self.bucket, key, ExtraArgs={"ContentType": content_type}
