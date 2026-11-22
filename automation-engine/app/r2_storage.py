@@ -135,6 +135,14 @@ class R2Storage:
             Bucket=upload.bucket, Key=upload.key, UploadId=upload.upload_id
         )
 
+    def download_file(self, key: str, destination: str) -> None:
+        self.client.download_file(self.bucket, key, destination)
+
+    def upload_file(self, source: str, key: str, content_type: str) -> None:
+        self.client.upload_file(
+            source, self.bucket, key, ExtraArgs={"ContentType": content_type}
+        )
+
     def create_download_url(self, key: str, expires_in: int = 900) -> str:
         if not 1 <= expires_in <= 3600:
             raise ValueError("Presigned URL expiry must be between 1 and 3600 seconds.")
