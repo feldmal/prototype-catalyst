@@ -23,9 +23,18 @@ def initialize_storage() -> None:
                 status TEXT NOT NULL,
                 error TEXT,
                 created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
+                updated_at TEXT NOT NULL,
+                workflow_options TEXT NOT NULL DEFAULT '{}'
             )
         """)
+        # Upgrade existing local databases without deleting prior job history.
+        columns = {
+            row[1] for row in connection.execute("PRAGMA table_info(jobs)").fetchall()
+        }
+        if "workflow_options" not in columns:
+            connection.execute(
+                "ALTER TABLE jobs ADD COLUMN workflow_options TEXT NOT NULL DEFAULT '{}'"
+            )
         connection.commit()
 
 
@@ -36,11 +45,14 @@ def _connect() -> sqlite3.Connection:
 
 
 def create_job(job: dict[str, Any]) -> None:
+    job = {**job, "workflow_options": job.get("workflow_options", "{}")}
     with _connect() as connection:
         connection.execute("""
             INSERT INTO jobs
-            (id, workflow, original_filename, input_path, output_path, status, error, created_at, updated_at)
-            VALUES (:id, :workflow, :original_filename, :input_path, :output_path, :status, :error, :created_at, :updated_at)
+            (id, workflow, original_filename, input_path, output_path, status, error,
+             created_at, updated_at, workflow_options)
+            VALUES (:id, :workflow, :original_filename, :input_path, :output_path,
+                    :status, :error, :created_at, :updated_at, :workflow_options)
         """, job)
         connection.commit()
 
