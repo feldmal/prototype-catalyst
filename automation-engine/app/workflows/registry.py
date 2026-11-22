@@ -11,13 +11,26 @@ class Workflow:
     description: str
     min_files: int
     max_files: int
-    run: Callable[[list[Path], Path], dict[str, int]]
+    run: Callable[..., dict[str, int]]
 
 
-def _run_clean_table(input_paths: list[Path], output_path: Path) -> dict[str, int]:
+def _run_clean_table(
+    input_paths: list[Path], output_path: Path, options: dict | None = None
+) -> dict[str, int]:
     if len(input_paths) != 1:
         raise ValueError("The clean_table workflow requires exactly one file.")
     return clean_table.run(input_paths[0], output_path)
+
+
+def _run_combine_files(
+    input_paths: list[Path], output_path: Path, options: dict | None = None
+) -> dict[str, int]:
+    options = options or {}
+    return combine_files.run(
+        input_paths,
+        output_path,
+        cleanup=bool(options.get("cleanup", False)),
+    )
 
 
 WORKFLOWS = {
@@ -30,10 +43,10 @@ WORKFLOWS = {
     ),
     "combine_files": Workflow(
         name="combine_files",
-        description="Append rows from multiple CSV and/or Excel files into one output.",
+        description="Append rows from multiple CSV and/or Excel files, optionally cleaning them first.",
         min_files=2,
         max_files=10,
-        run=combine_files.run,
+        run=_run_combine_files,
     ),
 }
 
