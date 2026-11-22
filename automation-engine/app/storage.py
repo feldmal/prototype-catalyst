@@ -1,60 +1,121 @@
 import json
 import os
-import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
+
+from sqlalchemy import (
+    Column,
+    Index,
+    MetaData,
+    String,
+    Table,
+    Text,
+    create_engine,
+    inspect,
+    select,
+    text,
+    update,
+)
+from sqlalchemy.engine import Connection, Engine
 
 DATA_DIR = Path(os.getenv("DATA_DIR", "data"))
 DB_PATH = DATA_DIR / "jobs.sqlite3"
 UPLOAD_DIR = DATA_DIR / "uploads"
 OUTPUT_DIR = DATA_DIR / "outputs"
 
+metadata = MetaData()
+
+jobs = Table(
+    "jobs",
+    metadata,
+    Column("id", String(36), primary_key=True),
+    Column("workflow", String(100), nullable=False),
+    Column("original_filename", String(500), nullable=False),
+    Column("input_path", Text, nullable=False),
+    Column("output_path", Text, nullable=True),
+    Column("status", String(30), nullable=False),
+    Column("error", Text, nullable=True),
+    Column("created_at", String(40), nullable=False),
+    Column("updated_at", String(40), nullable=False),
+    Column("workflow_options", Text, nullable=False, server_default="{}"),
+    Column("result_metrics", Text, nullable=False, server_default="{}"),
+)
+Index("idx_jobs_created", jobs.c.created_at)
+Index("idx_jobs_status", jobs.c.status)
+
+workflow_configs = Table(
+    "workflow_configs",
+    metadata,
+    Column("id", String(36), primary_key=True),
+    Column("name", String(120), nullable=False),
+    Column("workflow", String(100), nullable=False),
+    Column("options", Text, nullable=False),
+    Column("created_at", String(40), nullable=False),
+    Column("updated_at", String(40), nullable=False),
+)
+
+
+def _database_url() -> str:
+    configured = os.getenv("DATABASE_URL")
+    if configured:
+        return configured
+    return f"sqlite:///{DB_PATH.resolve().as_posix()}"
+
+
+def _create_engine() -> Engine:
+    url = _database_url()
+    options: dict[str, Any] = {"pool_pre_ping": True}
+    if url.startswith("sqlite:"):
+        options["connect_args"] = {"check_same_thread": False}
+    return create_engine(url, **options)
+
+
+@contextmanager
+def _connect() -> Iterator[Connection]:
+    engine = _create_engine()
+    try:
+        with engine.begin() as connection:
+            yield connection
+    finally:
+        engine.dispose()
+
 
 def initialize_storage() -> None:
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(DB_PATH) as connection:
-        connection.execute("""
-            CREATE TABLE IF NOT EXISTS jobs (
-                id TEXT PRIMARY KEY, workflow TEXT NOT NULL, original_filename TEXT NOT NULL,
-                input_path TEXT NOT NULL, output_path TEXT, status TEXT NOT NULL, error TEXT,
-                created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
-                workflow_options TEXT NOT NULL DEFAULT '{}', result_metrics TEXT NOT NULL DEFAULT '{}'
-            )
-        """)
-        columns = {row[1] for row in connection.execute("PRAGMA table_info(jobs)").fetchall()}
-        if "workflow_options" not in columns:
-            connection.execute("ALTER TABLE jobs ADD COLUMN workflow_options TEXT NOT NULL DEFAULT '{}'")
-        if "result_metrics" not in columns:
-            connection.execute("ALTER TABLE jobs ADD COLUMN result_metrics TEXT NOT NULL DEFAULT '{}'")
-        connection.execute("CREATE INDEX IF NOT EXISTS idx_jobs_created ON jobs(created_at DESC)")
-        connection.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status)")
-        connection.execute("""
-            CREATE TABLE IF NOT EXISTS workflow_configs (
-                id TEXT PRIMARY KEY, name TEXT NOT NULL, workflow TEXT NOT NULL,
-                options TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
-            )
-        """)
-        connection.commit()
 
+    engine = _create_engine()
+    try:
+        metadata.create_all(engine)
 
-def _connect() -> sqlite3.Connection:
-    connection = sqlite3.connect(DB_PATH)
-    connection.row_factory = sqlite3.Row
-    return connection
+        # Upgrade older SQLite databases created before options and metrics
+        # were stored. The same additive ALTER statements also work in
+        # PostgreSQL, so existing metadata is preserved during this change.
+        existing_columns = {
+            column["name"] for column in inspect(engine).get_columns("jobs")
+        }
+        with engine.begin() as connection:
+            if "workflow_options" not in existing_columns:
+                connection.execute(text(
+                    "ALTER TABLE jobs ADD COLUMN workflow_options TEXT NOT NULL DEFAULT '{}'"
+                ))
+            if "result_metrics" not in existing_columns:
+                connection.execute(text(
+                    "ALTER TABLE jobs ADD COLUMN result_metrics TEXT NOT NULL DEFAULT '{}'"
+                ))
+    finally:
+        engine.dispose()
 
 
 def create_job(job: dict[str, Any]) -> None:
-    job = {**job, "workflow_options": job.get("workflow_options", "{}"), "result_metrics": job.get("result_metrics", "{}")}
+    values = {
+        **job,
+        "workflow_options": job.get("workflow_options", "{}"),
+        "result_metrics": job.get("result_metrics", "{}"),
+    }
     with _connect() as connection:
-        connection.execute("""
-            INSERT INTO jobs
-            (id, workflow, original_filename, input_path, output_path, status, error,
-             created_at, updated_at, workflow_options, result_metrics)
-            VALUES (:id, :workflow, :original_filename, :input_path, :output_path,
-                    :status, :error, :created_at, :updated_at, :workflow_options, :result_metrics)
-        """, job)
-        connection.commit()
+        connection.execute(jobs.insert().values(**values))
 
 
 def update_job(job_id: str, **fields: Any) -> None:
@@ -63,45 +124,46 @@ def update_job(job_id: str, **fields: Any) -> None:
         return
     if not set(fields).issubset(allowed):
         raise ValueError("Unsupported job field update.")
-    assignments = ", ".join(f"{key} = ?" for key in fields)
     with _connect() as connection:
-        connection.execute(f"UPDATE jobs SET {assignments} WHERE id = ?", list(fields.values()) + [job_id])
-        connection.commit()
+        connection.execute(
+            update(jobs).where(jobs.c.id == job_id).values(**fields)
+        )
 
 
 def get_job(job_id: str) -> dict[str, Any] | None:
     with _connect() as connection:
-        row = connection.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        row = connection.execute(
+            select(jobs).where(jobs.c.id == job_id)
+        ).mappings().first()
         return dict(row) if row else None
 
 
-def list_jobs(limit: int = 50, offset: int = 0, status: str | None = None, workflow: str | None = None) -> list[dict[str, Any]]:
-    clauses, params = [], []
+def list_jobs(
+    limit: int = 50,
+    offset: int = 0,
+    status: str | None = None,
+    workflow: str | None = None,
+) -> list[dict[str, Any]]:
+    statement = select(jobs).order_by(jobs.c.created_at.desc()).limit(limit).offset(offset)
     if status:
-        clauses.append("status = ?"); params.append(status)
+        statement = statement.where(jobs.c.status == status)
     if workflow:
-        clauses.append("workflow = ?"); params.append(workflow)
-    where = " WHERE " + " AND ".join(clauses) if clauses else ""
+        statement = statement.where(jobs.c.workflow == workflow)
     with _connect() as connection:
-        rows = connection.execute(
-            f"SELECT * FROM jobs{where} ORDER BY created_at DESC LIMIT ? OFFSET ?",
-            params + [limit, offset],
-        ).fetchall()
+        rows = connection.execute(statement).mappings().all()
         return [dict(row) for row in rows]
 
 
 def create_workflow_config(config: dict[str, Any]) -> None:
     with _connect() as connection:
-        connection.execute("""
-            INSERT INTO workflow_configs (id, name, workflow, options, created_at, updated_at)
-            VALUES (:id, :name, :workflow, :options, :created_at, :updated_at)
-        """, config)
-        connection.commit()
+        connection.execute(workflow_configs.insert().values(**config))
 
 
 def list_workflow_configs() -> list[dict[str, Any]]:
     with _connect() as connection:
-        rows = connection.execute("SELECT * FROM workflow_configs ORDER BY created_at DESC").fetchall()
+        rows = connection.execute(
+            select(workflow_configs).order_by(workflow_configs.c.created_at.desc())
+        ).mappings().all()
         result = []
         for row in rows:
             item = dict(row)
