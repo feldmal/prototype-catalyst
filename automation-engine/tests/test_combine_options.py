@@ -33,7 +33,7 @@ def test_cleanup_off_preserves_source_headers_and_whitespace(tmp_path: Path):
     _write(second, pd.DataFrame({" Customer ": [" Northwind "]}))
 
     run([first, second], output, cleanup=False)
-    result = pd.read_csv(output, keep_default_na=False)
+    result = pd.read_csv(output, keep_default_na=False, skip_blank_lines=False)
     assert list(result.columns) == [" Customer "]
     assert result.iloc[:, 0].tolist() == [" Acme ", "   ", " Northwind "]
 
