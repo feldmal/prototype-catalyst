@@ -1,0 +1,28 @@
+services:
+  automation-api:
+    environment:
+      DATABASE_URL: postgresql+psycopg://prototype:local-development-only@postgres:5432/prototype_catalyst
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: prototype-catalyst-postgres
+    environment:
+      POSTGRES_DB: prototype_catalyst
+      POSTGRES_USER: prototype
+      POSTGRES_PASSWORD: local-development-only
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prototype -d prototype_catalyst"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
