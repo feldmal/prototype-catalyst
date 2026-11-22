@@ -13,12 +13,12 @@ from app.workflows.validate_data import run as validate
 
 def test_validation_report_does_not_modify_source_and_finds_issues(tmp_path: Path):
     source, output = tmp_path / "source.csv", tmp_path / "report.xlsx"
-    pd.DataFrame({"id": [1, 1, 3], "amount": ["10", "bad", None], "date": ["2026-01-01", "bad", "2026-01-03"]}).to_csv(source, index=False)
+    pd.DataFrame({"id": [1, 1, 1, 3], "amount": ["10", "bad", "bad", None], "date": ["2026-01-01", "bad", "bad", "2026-01-03"]}).to_csv(source, index=False)
     before = source.read_bytes()
     metrics = validate([source], output, {"required_columns": ["id", "amount"], "numeric_columns": ["amount"], "date_columns": ["date"]})
     report = pd.read_excel(output, sheet_name="Issues")
     assert source.read_bytes() == before
-    assert metrics["input_rows"] == 3
+    assert metrics["input_rows"] == 4
     assert metrics["issues_found"] >= 4
     assert "Invalid number" in report["issue"].tolist()
     assert "Invalid date" in report["issue"].tolist()
