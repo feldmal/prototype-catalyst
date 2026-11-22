@@ -58,15 +58,30 @@ maximum object size is 1,024 MiB (1 GiB), adjustable with `R2_MAX_UPLOAD_MB`.
 Multipart parts default to 16 MiB; the adapter enforces S3/R2's 5 MiB minimum
 (except the final part) and 10,000-part ceiling.
 
-Install/configure nothing to continue using the existing local upload workflow.
-To prepare R2 credentials, copy `.env.example` to a local `.env` file and set
-the R2 account ID, bucket-scoped access key/secret, and private bucket name.
-Never commit `.env` or paste credentials into chat. The adapter is not yet
-wired to public HTTP upload routes or job execution: the existing `POST /jobs`
-still uses local disk and its existing 25 MiB limit. This is intentional until
-authenticated upload-session ownership, durable session metadata, CORS, and
-worker-side processing are implemented. Do not expose presigned-upload endpoints
-or use this foundation for customer data yet.
+The R2 multipart API is now connected to job creation and processing for
+single-file workflows. Routes are:
+- `POST /r2/uploads` — create a multipart session (filename, size_bytes, workflow, options).
+- `POST /r2/uploads/{upload_id}/parts/{part_number}/url` — request a short-lived part URL.
+- `POST /r2/uploads/{upload_id}/complete` — verify uploaded size, create a job, and start processing.
+- `DELETE /r2/uploads/{upload_id}` — abort an unfinished multipart upload.
+
+These routes require `Authorization: Bearer <R2_UPLOAD_API_TOKEN>`. Configure
+R2 credentials and a long random token in a local `.env` file. Never commit
+`.env`, put the token in browser JavaScript, or paste credentials into chat.
+The token is a temporary shared-secret gate, not per-customer authentication.
+Keep this API private; do not expose it to customers until user sessions,
+tenant ownership checks, and authorization on job status/download routes exist.
+
+The completed upload is downloaded to temporary local disk for processing and
+the output is written back to R2. Ensure the host has enough temporary disk and
+memory for the file and selected workflow. Processing still uses FastAPI's
+in-process background task, so it is not durable across restarts. The legacy
+`POST /jobs` remains local-disk based with its existing 25 MiB limit.
+
+Configure the private R2 bucket's CORS policy to allow PUT from the exact
+frontend origin and expose the `ETag` response header. The browser must obtain
+upload URLs from a trusted backend; it must never receive the shared API token.
+The API does not yet provide that authenticated browser-facing proxy/session layer.
 
 The R2 adapter's unit tests use a mocked S3 client, so they do not require an
 R2 account or incur storage charges.
@@ -133,6 +148,10 @@ Saved configurations are reusable presets only. They do not yet trigger jobs aut
 |---|---|---|
 | GET | `/health` | Service health |
 | GET | `/workflows` | Registered workflows |
+| POST | `/r2/uploads` | Start authenticated R2 multipart upload |
+| POST | `/r2/uploads/{upload_id}/parts/{part_number}/url` | Create presigned part URL |
+| POST | `/r2/uploads/{upload_id}/complete` | Complete upload and create processing job |
+| DELETE | `/r2/uploads/{upload_id}` | Abort unfinished R2 upload |
 | POST | `/jobs` | Upload files and start a workflow |
 | GET | `/jobs` | Filterable job history |
 | GET | `/jobs/{job_id}` | Job status and metrics |
