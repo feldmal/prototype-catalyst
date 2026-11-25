@@ -1,0 +1,4 @@
+# Local-only example. Copy this file to .dev.vars and replace the placeholders.
+AUTOMATION_API_URL=http://127.0.0.1:8000
+AUTOMATION_API_TOKEN=replace-with-local-R2-upload-api-token
+PORTAL_ACCESS_CODE=replace-with-a-local-test-access-code
