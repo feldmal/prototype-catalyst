@@ -35,7 +35,7 @@ def _run_combine_files(input_paths: list[Path], output_path: Path, options: dict
 
 
 WORKFLOWS = {
-    "clean_table": Workflow("clean_table", "Standardize headers, trim text, and remove empty rows and columns.", 1, 1, _run_clean_table),
+    "clean_table": Workflow("clean_table", "Standardize headers, trim text, remove empty rows and columns, and remove exact duplicate rows.", 1, 1, _run_clean_table),
     "combine_files": Workflow("combine_files", "Append rows from multiple CSV/XLSX files, optionally cleaning them first.", 2, 10, _run_combine_files),
     "validate_data": Workflow("validate_data", "Profile a file and report missing values, duplicates, and configured invalid values without changing source data.", 1, 1, _one_file(validate_data), "xlsx"),
     "transform_data": Workflow("transform_data", "Rename, filter, convert, calculate, and remove columns using a reusable configuration.", 1, 1, _one_file(transform_data)),
