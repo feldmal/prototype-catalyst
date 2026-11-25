@@ -34,6 +34,11 @@ def run(input_path: Path, output_path: Path) -> dict[str, int]:
     frame = frame.replace(r"^\s*$", pd.NA, regex=True)
     frame = frame.dropna(axis=0, how="all").dropna(axis=1, how="all")
 
+    # Exact duplicate rows are removed by default after normalization.
+    rows_before_deduplication = len(frame)
+    frame = frame.drop_duplicates()
+    duplicates_removed = rows_before_deduplication - len(frame)
+
     if suffix == ".csv":
         frame.to_csv(output_path, index=False)
     else:
@@ -44,4 +49,5 @@ def run(input_path: Path, output_path: Path) -> dict[str, int]:
         "output_rows": int(len(frame)),
         "input_columns": int(original_columns),
         "output_columns": int(len(frame.columns)),
+        "duplicates_removed": int(duplicates_removed),
     }
