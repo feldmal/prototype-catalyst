@@ -179,7 +179,7 @@
         const end = Math.min(start + init.part_size, file.size);
         const chunk = file.slice(start, end);
         setStatus("Uploading file", "Part " + partNumber + " of " + init.part_count, "normal", ((partNumber - 1) / init.part_count) * 80);
-        const urlResponse = await api("/r2/uploads/" + encodeURIComponent(uploadId) + "/parts/" + partNumber + "/url", { method: "POST" });
+        const urlResponse = await api("/r2/uploads/" + encodeURIComponent(uploadId) + "/parts/" + partNumber + "/url", { method: "POST", body: JSON.stringify({}) });
         const urlData = await urlResponse.json();
         const putResponse = await fetch(urlData.url, { method: "PUT", body: chunk });
         if (!putResponse.ok) throw new Error("The file part could not be uploaded. Check the R2 bucket CORS settings and try again.");
