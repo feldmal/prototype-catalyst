@@ -39,6 +39,7 @@ def test_clean_table_removes_empty_and_whitespace_only_rows_and_columns(
         "output_rows": 2,
         "input_columns": 3,
         "output_columns": 2,
+        "duplicates_removed": 0,
     }
 
 
@@ -113,3 +114,26 @@ def test_workflow_registry_exposes_both_workflows():
     assert get_workflow("combine_files").min_files == 2
     assert get_workflow("combine_files").max_files == 10
     assert get_workflow("not_a_workflow") is None
+
+
+@pytest.mark.parametrize("suffix", [".csv", ".xlsx"])
+def test_clean_table_removes_exact_duplicates_by_default(tmp_path: Path, suffix: str):
+    source = tmp_path / f"duplicates{suffix}"
+    output = tmp_path / f"cleaned{suffix}"
+    frame = pd.DataFrame({
+        "Name": ["Alice", " Alice ", "Bob", "Bob"],
+        "Score": [10, 10, 20, 20],
+    })
+
+    if suffix == ".csv":
+        frame.to_csv(source, index=False)
+    else:
+        frame.to_excel(source, index=False, engine="openpyxl")
+
+    metrics = run_clean_table(source, output)
+    result = pd.read_csv(output) if suffix == ".csv" else pd.read_excel(output)
+
+    assert len(result) == 2
+    assert result["name"].tolist() == ["Alice", "Bob"]
+    assert metrics["duplicates_removed"] == 2
+    assert metrics["output_rows"] == 2
