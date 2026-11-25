@@ -30,7 +30,7 @@
 <div class="workspace-heading"><div><span class="eyebrow">FILE AUTOMATION</span><h2>Start a job</h2><p class="workflow-help">Choose a workflow and upload one CSV or Excel file.</p></div><span class="preview-pill">TEST WORKSPACE</span></div>
 <form id="jobForm">
 <div class="workspace-grid">
-<div class="workspace-field"><label for="workflow">Automation</label><select id="workflow" required><option value="">Loading workflows…</option></select><p class="workflow-help" id="workflowDescription">Available workflows will appear here.</p></div>
+<div class="workspace-field"><label for="workflow">Automation</label><select id="workflow" required><option value="">Loading workflows…</option></select><p class="workflow-help" id="workflowDescription">Available workflows will appear here.</p><div id="workflowOptions"></div></div>
 <div class="workspace-field"><label for="fileInput">Input file</label><label class="upload-drop" for="fileInput"><strong>Choose a file to upload</strong><span>CSV or XLSX · One file per job</span><input id="fileInput" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required></label><div class="file-info" id="fileInfo"></div></div>
 </div>
 <div class="workspace-actions"><button class="btn" type="submit" id="runButton">Run automation</button><button class="btn btn-small" type="button" id="disconnectButton">Disconnect</button><span class="workflow-help">Your file is processed by the configured automation service.</span></div>
@@ -83,7 +83,7 @@
   const loadWorkflows = async () => {
     const response = await api("/workflows");
     const data = await response.json();
-    state.workflows = (data.workflows || []).filter(item => item.min_files === 1 && item.max_files === 1);
+    state.workflows = (data.workflows || []).filter(item => item.min_files === 1 && item.max_files === 1 && ["clean_table", "validate_data"].includes(item.name));
     const select = $("workflow");
     select.replaceChildren();
     state.workflows.forEach(item => {
@@ -98,6 +98,42 @@
   const updateWorkflowDescription = () => {
     const selected = state.workflows.find(item => item.name === $("workflow").value);
     $("workflowDescription").textContent = selected ? selected.description : "Choose a workflow.";
+    const options = $("workflowOptions");
+    options.replaceChildren();
+    if (!selected || selected.name !== "validate_data") return;
+    const help = document.createElement("p");
+    help.className = "workflow-help";
+    help.textContent = "Optional checks. Enter column names exactly as they appear in your file, separated by commas.";
+    options.append(help);
+    const addColumnInput = (id, labelText, placeholder) => {
+      const wrap = document.createElement("div");
+      wrap.className = "workspace-field";
+      wrap.style.marginTop = "12px";
+      const label = document.createElement("label");
+      label.htmlFor = id;
+      label.textContent = labelText;
+      const input = document.createElement("input");
+      input.id = id;
+      input.type = "text";
+      input.placeholder = placeholder;
+      input.autocomplete = "off";
+      wrap.append(label, input);
+      options.append(wrap);
+    };
+    addColumnInput("requiredColumns", "Required columns", "customer_id, order_date");
+    addColumnInput("dateColumns", "Columns to check as dates", "order_date");
+    addColumnInput("numericColumns", "Columns to check as numbers", "amount, quantity");
+    const checkWrap = document.createElement("div");
+    checkWrap.style.marginTop = "12px";
+    const check = document.createElement("input");
+    check.type = "checkbox";
+    check.id = "checkDuplicates";
+    check.checked = true;
+    const checkLabel = document.createElement("label");
+    checkLabel.htmlFor = "checkDuplicates";
+    checkLabel.textContent = "Check for duplicate rows";
+    checkWrap.append(check, checkLabel);
+    options.append(checkWrap);
   };
   $("workflow").addEventListener("change", updateWorkflowDescription);
   $("fileInput").addEventListener("change", () => {
@@ -167,8 +203,18 @@
     let uploadId = null;
     try {
       setStatus("Preparing upload", "Creating a secure upload session…", "normal", 0);
+      let workflowOptions = {};
+      if (workflow === "validate_data") {
+        const parseColumns = id => $(id).value.split(",").map(value => value.trim()).filter(Boolean);
+        workflowOptions = {
+          required_columns: parseColumns("requiredColumns"),
+          date_columns: parseColumns("dateColumns"),
+          numeric_columns: parseColumns("numericColumns"),
+          check_duplicates: $("checkDuplicates").checked
+        };
+      }
       const initResponse = await api("/r2/uploads", { method: "POST", body: JSON.stringify({
-        filename: file.name, size_bytes: file.size, workflow: workflow, options: {}
+        filename: file.name, size_bytes: file.size, workflow: workflow, options: workflowOptions
       })});
       const init = await initResponse.json();
       uploadId = init.upload_id;
