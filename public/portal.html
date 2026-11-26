@@ -195,7 +195,7 @@
       return;
     }
     if (!file.size) {
-      setStatus("Empty file", "Choose a file that contains data.", "error");
+      setStatus("Empty file", "This file contains no data rows. Upload a CSV or XLSX file with a header row and at least one data row.", "error");
       return;
     }
     setBusy(true);
@@ -284,7 +284,14 @@
         try { await api("/r2/uploads/" + encodeURIComponent(uploadId), { method: "DELETE" }); } catch {}
         state.uploadId = null;
       }
-      setStatus("Could not complete the job", error.message, "error");
+      const message = error.message || "The uploaded file could not be processed. Check the workflow options and file contents, then try again.";
+      if (message.startsWith("EMPTY_FILE:")) {
+        setStatus("Empty file", message.slice("EMPTY_FILE:".length).trim(), "error");
+      } else if (message.startsWith("INVALID_CSV:")) {
+        setStatus("Invalid CSV structure", message.slice("INVALID_CSV:".length).trim(), "error");
+      } else {
+        setStatus("Could not complete the job", message, "error");
+      }
     } finally {
       setBusy(false);
     }
