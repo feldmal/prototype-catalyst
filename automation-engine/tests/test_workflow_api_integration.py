@@ -223,3 +223,31 @@ def test_download_for_unknown_job_returns_not_found(client):
     # that the download route does not return a successful file.
     missing = client.get(f"/jobs/{job_id}-missing/download")
     assert missing.status_code == 404
+
+
+@pytest.mark.parametrize(
+    "source,expected_prefix",
+    [
+        ("\\n", "EMPTY_FILE:"),
+        ("customer_id,customer_name\\n", "EMPTY_FILE:"),
+        (
+            "customer_id,customer_name\\nA001,Northwind\\nA002,Contoso,extra\\n",
+            "INVALID_CSV:",
+        ),
+    ],
+)
+def test_clean_table_reports_empty_and_malformed_inputs(client, source, expected_prefix):
+    response = client.post(
+        "/jobs",
+        data={"workflow": "clean_table"},
+        files=[csv_upload("input.csv", source)],
+    )
+    assert response.status_code == 202, response.text
+    job_id = response.json()["job"]["id"]
+
+    detail = client.get(f"/jobs/{job_id}")
+    assert detail.status_code == 200
+    job = detail.json()["job"]
+    assert job["status"] == "failed"
+    assert job["error"].startswith(expected_prefix)
+
