@@ -2,13 +2,13 @@ services:
   - type: web
     name: prototype-catalyst-automation
     runtime: docker
-    plan: starter
+    plan: free
     rootDir: automation-engine
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     envVars:
       - key: DATA_DIR
-        value: /var/data
+        value: /tmp
       - key: MAX_UPLOAD_MB
         value: "25"
       - key: REQUIRE_API_TOKEN
@@ -25,7 +25,3 @@ services:
         sync: false
       - key: R2_UPLOAD_API_TOKEN
         sync: false
-    disk:
-      name: automation-data
-      mountPath: /var/data
-      sizeGB: 1
