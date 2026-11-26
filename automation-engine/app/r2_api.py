@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from app import storage
 from app.r2_storage import R2ConfigurationError, R2Storage, UploadSizeError
+from app.workflows.clean_table import EmptyInputFileError, InvalidCsvStructureError
 from app.workflows.registry import get_workflow
 
 router = APIRouter(prefix="/r2/uploads", tags=["R2 uploads"])
@@ -162,6 +163,10 @@ def process_r2_job(job_id: str, object_key: str) -> None:
                          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if output_suffix == ".xlsx" else "text/csv")
         storage.update_job(job_id, output_path=f"r2://{result_key}", status="completed",
                            error=None, result_metrics=json.dumps(metrics), updated_at=now())
+    except EmptyInputFileError as exc:
+        storage.update_job(job_id, status="failed", error=str(exc), updated_at=now())
+    except InvalidCsvStructureError as exc:
+        storage.update_job(job_id, status="failed", error=str(exc), updated_at=now())
     except Exception:
         storage.update_job(job_id, status="failed",
                            error="The uploaded file could not be processed. Check the workflow options and file contents, then try again.",
