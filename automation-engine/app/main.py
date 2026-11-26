@@ -1,11 +1,12 @@
 import json
 import os
+import secrets
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
 from app import storage
 from app.workflows.registry import WORKFLOWS, get_workflow
@@ -16,6 +17,22 @@ MAX_FILES_PER_JOB = 10
 
 app = FastAPI(title="Prototype Catalyst Automation Engine", version="0.4.0",
               description="Local development API for reusable file-based automation workflows.")
+
+
+@app.middleware("http")
+async def protect_deployed_api(request, call_next):
+    """Require the Worker-to-API bearer token when enabled for hosted deployments."""
+    if request.url.path == "/health":
+        return await call_next(request)
+    if os.getenv("REQUIRE_API_TOKEN", "false").lower() != "true":
+        return await call_next(request)
+    expected = os.getenv("R2_UPLOAD_API_TOKEN", "")
+    supplied = request.headers.get("authorization", "")
+    if not expected:
+        return JSONResponse({"detail": "API authentication is not configured."}, status_code=503)
+    if not secrets.compare_digest(supplied, f"Bearer {expected}"):
+        return JSONResponse({"detail": "Unauthorized."}, status_code=401)
+    return await call_next(request)
 
 
 def utc_now() -> str:
