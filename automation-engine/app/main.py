@@ -9,6 +9,7 @@ from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadF
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 
 from app import storage
+from app.workflows.clean_table import EmptyInputFileError, InvalidCsvStructureError
 from app.workflows.registry import WORKFLOWS, get_workflow
 
 MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_MB", "25")) * 1024 * 1024
@@ -95,6 +96,10 @@ def process_job(job_id: str) -> None:
         metrics = process_job_from_paths(job, input_paths, output_path)
         storage.update_job(job_id, output_path=str(output_path), status="completed",
                            error=None, result_metrics=json.dumps(metrics), updated_at=utc_now())
+    except EmptyInputFileError as exc:
+        storage.update_job(job_id, status="failed", error=str(exc), updated_at=utc_now())
+    except InvalidCsvStructureError as exc:
+        storage.update_job(job_id, status="failed", error=str(exc), updated_at=utc_now())
     except Exception:
         storage.update_job(job_id, status="failed",
                            error="The files could not be processed. Check the workflow options, file formats, headers, and contents, then try again.",
